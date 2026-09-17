@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartBudget — Budget Planner & Expense Analytics</title>
+  <meta name="description" content="Modern monthly budget planner and expense tracker with Chart.js data visualization, category spending limits, and real-time over-budget warnings.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="glow-sphere glow-1"></div>
+  <div class="glow-sphere glow-2"></div>
+  <div class="glow-sphere glow-3"></div>
+
+  <!-- Main Application Wrapper -->
+  <div class="app-container">
+    
+    <!-- Top Navigation & Header -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="brand-logo">
+          <i data-lucide="wallet-cards"></i>
+        </div>
+        <div>
+          <h1 class="brand-title">SmartBudget</h1>
+          <p class="brand-subtitle">Monthly Planner & Analytics</p>
+        </div>
+      </div>
+
+      <!-- Month & Year Controls -->
+      <div class="month-selector-wrapper">
+        <button id="prevMonthBtn" class="btn-icon" title="Previous Month" aria-label="Previous Month">
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <div class="month-display" id="monthDisplay">
+          <i data-lucide="calendar" class="calendar-icon"></i>
+          <span id="currentMonthText">September 2026</span>
+          <input type="month" id="monthPicker" class="hidden-month-picker" aria-label="Select month and year">
+        </div>
+        <button id="nextMonthBtn" class="btn-icon" title="Next Month" aria-label="Next Month">
+          <i data-lucide="chevron-right"></i>
+        </button>
+        <button id="currentMonthBtn" class="btn-pill" title="Jump to Current Month">This Month</button>
+      </div>
+
+      <!-- Header Action Buttons -->
+      <div class="header-actions">
+        <button id="openCategoryModalBtn" class="btn btn-secondary">
+          <i data-lucide="layout-grid"></i>
+          <span>Categories</span>
+        </button>
+        <button id="openExpenseModalBtn" class="btn btn-primary glow-button">
+          <i data-lucide="plus-circle"></i>
+          <span>Log Expense</span>
+        </button>
+        <button id="openDataMenuBtn" class="btn btn-ghost" title="Data Management & Backup" aria-label="Data Settings">
+          <i data-lucide="settings-2"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Over Budget Global Alert Banner (Hidden when 0 alerts) -->
+    <div id="overBudgetBanner" class="alert-banner hidden">
+      <div class="alert-icon-wrapper">
+        <i data-lucide="alert-triangle" class="alert-icon"></i>
+      </div>
+      <div class="alert-content">
+        <h3 class="alert-title" id="alertBannerTitle">Budget Limit Exceeded!</h3>
+        <p class="alert-desc" id="alertBannerDesc">1 category has exceeded its allocated limit this month.</p>
+      </div>
+      <button id="dismissAlertBtn" class="btn-close-alert" aria-label="Dismiss Alert">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <!-- KPI Summary Metric Cards -->
+    <section class="kpi-grid" aria-label="Financial Summary KPIs">
+      <!-- Card 1: Total Budget -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Total Monthly Budget</span>
+          <div class="kpi-icon-badge kpi-indigo">
+            <i data-lucide="piggy-bank"></i>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpiTotalBudget">$0.00</div>
+        <div class="kpi-footer">
+          <span class="kpi-subtext" id="kpiCategoryCount">0 active categories</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Total Spent -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Total Spent</span>
+          <div class="kpi-icon-badge kpi-purple">
+            <i data-lucide="credit-card"></i>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpiTotalSpent">$0.00</div>
+        <div class="kpi-footer">
+          <span id="kpiSpentPercentBadge" class="badge badge-neutral">0% of budget</span>
+          <span class="kpi-subtext" id="kpiExpenseCount">0 transactions</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Remaining / Deficit Balance -->
+      <div class="kpi-card" id="kpiRemainingCard">
+        <div class="kpi-header">
+          <span class="kpi-label" id="kpiRemainingLabel">Remaining Balance</span>
+          <div class="kpi-icon-badge kpi-emerald" id="kpiRemainingBadge">
+            <i data-lucide="trending-up" id="kpiRemainingIcon"></i>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpiRemainingAmount">$0.00</div>
+        <div class="kpi-footer">
+          <span class="kpi-subtext" id="kpiRemainingStatus">Within budgeted target</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Over Budget Health Status -->
+      <div class="kpi-card" id="kpiHealthCard">
+        <div class="kpi-header">
+          <span class="kpi-label">Budget Health</span>
+          <div class="kpi-icon-badge kpi-emerald" id="kpiHealthIconBadge">
+            <i data-lucide="shield-check" id="kpiHealthIcon"></i>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpiHealthStatus">Healthy</div>
+        <div class="kpi-footer">
+          <span id="kpiOverBudgetCountBadge" class="badge badge-success">0 Over Budget</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Analytics & Content Layout -->
+    <main class="dashboard-grid">
+      
+      <!-- Left Column: Visual Analytics & Category Progress -->
+      <section class="main-column">
+        
+        <!-- Interactive Chart Panel -->
+        <div class="glass-card chart-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <i data-lucide="bar-chart-3" class="panel-icon text-indigo"></i>
+              <div>
+                <h2 class="panel-title">Visual Spending Analytics</h2>
+                <p class="panel-subtitle">Interactive comparison of allocated budgets vs actual spending</p>
+              </div>
+            </div>
+
+            <!-- Chart Type Switcher -->
+            <div class="chart-tab-group" role="tablist">
+              <button class="chart-tab active" data-chart="bar" role="tab" aria-selected="true">
+                <i data-lucide="bar-chart-2"></i>
+                <span>Budget vs Actual</span>
+              </button>
+              <button class="chart-tab" data-chart="doughnut" role="tab" aria-selected="false">
+                <i data-lucide="pie-chart"></i>
+                <span>Category Share</span>
+              </button>
+              <button class="chart-tab" data-chart="line" role="tab" aria-selected="false">
+                <i data-lucide="trending-up"></i>
+                <span>Daily Velocity</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Chart Canvas Container -->
+          <div class="chart-wrapper">
+            <div class="chart-container" id="barChartContainer">
+              <canvas id="budgetBarChart"></canvas>
+            </div>
+            <div class="chart-container hidden" id="doughnutChartContainer">
+              <div class="doughnut-layout">
+                <div class="doughnut-canvas-box">
+                  <canvas id="categoryDoughnutChart"></canvas>
+                  <div class="doughnut-center-info">
+                    <span class="doughnut-center-label">Total Spent</span>
+                    <span class="doughnut-center-val" id="doughnutCenterTotal">$0</span>
+                  </div>
+                </div>
+                <div class="doughnut-legend" id="customDoughnutLegend"></div>
+              </div>
+            </div>
+            <div class="chart-container hidden" id="lineChartContainer">
+              <canvas id="spendingLineChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Budgets & Spending Section -->
+        <div class="glass-card category-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <i data-lucide="layers" class="panel-icon text-purple"></i>
+              <div>
+                <h2 class="panel-title">Category Budgets</h2>
+                <p class="panel-subtitle">Monitor threshold progress and over-budget limits</p>
+              </div>
+            </div>
+
+            <div class="category-header-actions">
+              <div class="filter-pill-group">
+                <button class="filter-pill active" data-filter="all">All (<span id="countAllCats">0</span>)</button>
+                <button class="filter-pill" data-filter="over">Over Budget (<span id="countOverCats">0</span>)</button>
+                <button class="filter-pill" data-filter="near">Near Limit (<span id="countNearCats">0</span>)</button>
+              </div>
+              <button id="addCategoryQuickBtn" class="btn btn-sm btn-secondary">
+                <i data-lucide="plus"></i>
+                <span>New Category</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Category Progress Cards Grid -->
+          <div class="category-cards-grid" id="categoryCardsGrid">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Expense Logger & Transaction List -->
+      <section class="side-column">
+        
+        <!-- Quick Log Expense Card -->
+        <div class="glass-card quick-expense-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <i data-lucide="receipt" class="panel-icon text-emerald"></i>
+              <div>
+                <h2 class="panel-title">Quick Log Expense</h2>
+                <p class="panel-subtitle">Add spending record instantly</p>
+              </div>
+            </div>
+          </div>
+
+          <form id="quickExpenseForm" class="quick-form">
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="quickDescription">Description / Merchant</label>
+                <div class="input-with-icon">
+                  <i data-lucide="shopping-bag" class="input-icon"></i>
+                  <input type="text" id="quickDescription" placeholder="e.g. Grocery store, Netflix..." required>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row two-cols">
+              <div class="form-group">
+                <label for="quickAmount">Amount ($)</label>
+                <div class="input-with-icon">
+                  <i data-lucide="dollar-sign" class="input-icon"></i>
+                  <input type="number" id="quickAmount" placeholder="0.00" step="0.01" min="0.01" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="quickCategory">Category</label>
+                <div class="input-with-icon">
+                  <i data-lucide="tag" class="input-icon"></i>
+                  <select id="quickCategory" required>
+                    <!-- Options populated via JS -->
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row two-cols">
+              <div class="form-group">
+                <label for="quickDate">Date</label>
+                <div class="input-with-icon">
+                  <i data-lucide="calendar" class="input-icon"></i>
+                  <input type="date" id="quickDate" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="quickPayment">Payment Method</label>
+                <div class="input-with-icon">
+                  <i data-lucide="credit-card" class="input-icon"></i>
+                  <select id="quickPayment">
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Debit Card">Debit Card</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="UPI / App">UPI / Digital</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block glow-button">
+              <i data-lucide="plus-circle"></i>
+              <span>Add Expense</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Recent Transactions & Expenses History -->
+        <div class="glass-card transaction-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <i data-lucide="history" class="panel-icon text-cyan"></i>
+              <div>
+                <h2 class="panel-title">Monthly Expenses</h2>
+                <p class="panel-subtitle" id="transactionSubtitle">0 transactions in selected month</p>
+              </div>
+            </div>
+
+            <button id="exportCsvBtn" class="btn-icon-subtle" title="Export to CSV" aria-label="Export to CSV">
+              <i data-lucide="download"></i>
+            </button>
+          </div>
+
+          <!-- Search & Filter Controls -->
+          <div class="transaction-controls">
+            <div class="search-input-wrapper">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="transactionSearch" placeholder="Search merchant, notes...">
+            </div>
+            <select id="transactionCategoryFilter" class="compact-select" aria-label="Filter by category">
+              <option value="all">All Categories</option>
+            </select>
+          </div>
+
+          <!-- Transaction List Container -->
+          <div class="transaction-list" id="transactionList">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <p>SmartBudget • Built with HTML5, CSS3, JavaScript, Chart.js & LocalStorage</p>
+        <div class="footer-links">
+          <button id="loadSampleDataBtn" class="btn-link">Load Sample Data</button>
+          <span>•</span>
+          <button id="resetDataBtn" class="btn-link text-danger">Reset All</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Modal: Category Management -->
+  <div id="categoryModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge">
+            <i data-lucide="folder-cog"></i>
+          </div>
+          <div>
+            <h3 id="catModalTitle" class="modal-title">Manage Categories & Budgets</h3>
+            <p class="modal-subtitle">Customize your monthly budget allocations</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" id="closeCategoryModalBtn" aria-label="Close modal">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Add New Category Form -->
+        <form id="categoryForm" class="category-create-form">
+          <h4 class="form-section-title" id="catFormHeader">Create New Category</h4>
+          <input type="hidden" id="editCategoryId" value="">
+
+          <div class="form-row two-cols">
+            <div class="form-group">
+              <label for="catName">Category Name</label>
+              <input type="text" id="catName" placeholder="e.g. Dining, Travel, Gym" required>
+            </div>
+            <div class="form-group">
+              <label for="catBudget">Monthly Budget ($)</label>
+              <input type="number" id="catBudget" placeholder="500.00" min="0" step="1" required>
+            </div>
+          </div>
+
+          <div class="form-row two-cols">
+            <div class="form-group">
+              <label for="catIcon">Icon</label>
+              <select id="catIcon">
+                <option value="home">🏠 Housing / Home</option>
+                <option value="utensils">🍴 Food & Dining</option>
+                <option value="shopping-cart">🛒 Groceries</option>
+                <option value="car">🚗 Transportation</option>
+                <option value="film">🎬 Entertainment</option>
+                <option value="zap">⚡ Utilities & Bills</option>
+                <option value="heart-pulse">🩺 Health & Wellness</option>
+                <option value="shopping-bag">🛍️ Shopping</option>
+                <option value="plane">✈️ Travel</option>
+                <option value="graduation-cap">🎓 Education</option>
+                <option value="piggy-bank">💰 Savings & Investments</option>
+                <option value="coffee">☕ Cafe & Snacks</option>
+                <option value="gift">🎁 Gifts & Charity</option>
+                <option value="folder">📁 General / Other</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="catColor">Color Theme</label>
+              <div class="color-picker-grid" id="colorPickerGrid">
+                <!-- Color options -->
+                <button type="button" class="color-swatch active" data-color="#6366f1" style="background-color: #6366f1;"></button>
+                <button type="button" class="color-swatch" data-color="#8b5cf6" style="background-color: #8b5cf6;"></button>
+                <button type="button" class="color-swatch" data-color="#ec4899" style="background-color: #ec4899;"></button>
+                <button type="button" class="color-swatch" data-color="#f43f5e" style="background-color: #f43f5e;"></button>
+                <button type="button" class="color-swatch" data-color="#f97316" style="background-color: #f97316;"></button>
+                <button type="button" class="color-swatch" data-color="#eab308" style="background-color: #eab308;"></button>
+                <button type="button" class="color-swatch" data-color="#10b981" style="background-color: #10b981;"></button>
+                <button type="button" class="color-swatch" data-color="#06b6d4" style="background-color: #06b6d4;"></button>
+                <button type="button" class="color-swatch" data-color="#3b82f6" style="background-color: #3b82f6;"></button>
+              </div>
+              <input type="hidden" id="selectedColor" value="#6366f1">
+            </div>
+          </div>
+
+          <div class="form-actions-inline">
+            <button type="submit" id="saveCategoryBtn" class="btn btn-primary">
+              <i data-lucide="check"></i>
+              <span id="saveCatBtnText">Save Category</span>
+            </button>
+            <button type="button" id="cancelEditCatBtn" class="btn btn-ghost hidden">Cancel Edit</button>
+          </div>
+        </form>
+
+        <!-- Current Category Table / List -->
+        <div class="existing-categories-section">
+          <h4 class="form-section-title">Existing Categories</h4>
+          <div class="category-manage-list" id="categoryManageList">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Data Backup & Settings -->
+  <div id="dataModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dataModalTitle">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge">
+            <i data-lucide="database"></i>
+          </div>
+          <div>
+            <h3 id="dataModalTitle" class="modal-title">Data Backup & Options</h3>
+            <p class="modal-subtitle">Export or restore your budget database</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" id="closeDataModalBtn" aria-label="Close modal">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="data-options-list">
+          <div class="data-option-item">
+            <div>
+              <strong>Export Data as JSON</strong>
+              <p class="option-desc">Download all categories and expenses as a backup JSON file.</p>
+            </div>
+            <button id="exportJsonBtn" class="btn btn-secondary btn-sm">
+              <i data-lucide="download"></i> Export JSON
+            </button>
+          </div>
+
+          <div class="data-option-item">
+            <div>
+              <strong>Export Expenses as CSV</strong>
+              <p class="option-desc">Download current month's expenses formatted for Excel / Sheets.</p>
+            </div>
+            <button id="exportCsvModalBtn" class="btn btn-secondary btn-sm">
+              <i data-lucide="file-spreadsheet"></i> Export CSV
+            </button>
+          </div>
+
+          <div class="data-option-item">
+            <div>
+              <strong>Import JSON Backup</strong>
+              <p class="option-desc">Restore previously exported budget data.</p>
+            </div>
+            <label for="importJsonFile" class="btn btn-secondary btn-sm file-input-label">
+              <i data-lucide="upload"></i> Import File
+            </label>
+            <input type="file" id="importJsonFile" accept=".json" class="hidden-file-input">
+          </div>
+
+          <div class="data-option-item danger-border">
+            <div>
+              <strong class="text-danger">Reset to Fresh Demo Data</strong>
+              <p class="option-desc">Replaces current data with standard realistic test data.</p>
+            </div>
+            <button id="loadSampleModalBtn" class="btn btn-warning btn-sm">
+              <i data-lucide="refresh-cw"></i> Load Demo
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>
